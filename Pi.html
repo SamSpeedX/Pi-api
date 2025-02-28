@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pi Payment Integration - Production</title>
+  <!-- Include the Pi SDK script (update the src as needed) -->
+  <script src="path-to-pi-sdk.js"></script>
+  <style>
+    #alert {
+      padding: 10px;
+      background-color: #f8d7da;
+      color: #721c24;
+      margin: 10px 0;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Buy Using Pi</h1>
+  <button id="pay-with-pi">Pay with Pi</button>
+  <div id="alert"></div>
+
+  <script>
+    // Initialize the Pi SDK with production settings
+    Pi.init({
+      appId: 'YOUR_PRODUCTION_APP_ID', // Replace with your actual production App ID
+      sandbox: false,                  // Set to false for production
+    });
+
+    // Payment button functionality
+    document.getElementById('pay-with-pi').addEventListener('click', () => {
+      const paymentData = {
+        amount: 1.0, // Amount in Pi
+        memo: 'Payment for product', // Reason for the payment
+        metadata: { orderId: '12345', description: 'Product purchase' } // Optional metadata
+      };
+
+      Pi.createPayment(paymentData, {
+        onReadyForServerApproval: (paymentId) => {
+          console.log('Payment ready for server approval:', paymentId);
+          showAlert(`Payment ID: ${paymentId} is ready for server approval.`);
+          // Optionally call your server here for pre-approval steps if needed
+        },
+        onReadyForServerCompletion: (paymentId, txid) => {
+          console.log('Payment ready for completion:', paymentId, txid);
+          showAlert(`Payment completed with Transaction ID: ${txid}`);
+
+          // Send transaction data to your server for further processing and record-keeping
+          fetch('transaction.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentId: paymentId,
+              txid: txid,
+              amount: paymentData.amount,
+              memo: paymentData.memo,
+              metadata: paymentData.metadata
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Transaction saved:', data);
+          })
+          .catch(error => {
+            console.error('Error saving transaction:', error);
+          });
+        },
+        onCancel: (paymentId) => {
+          console.log('Payment canceled:', paymentId);
+          showAlert('Payment canceled.');
+        },
+        onError: (error) => {
+          console.error('Payment error:', error);
+          showAlert('An error occurred while processing the payment.');
+        },
+      });
+    });
+
+    // Simple alert display function
+    function showAlert(message) {
+      const alertElement = document.getElementById('alert');
+      alertElement.textContent = message;
+      alertElement.style.display = 'block';
+      setTimeout(() => {
+        alertElement.style.display = 'none';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
